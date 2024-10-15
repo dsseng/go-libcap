@@ -2,6 +2,7 @@ package cap
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"runtime"
 	"sync"
@@ -300,6 +301,7 @@ func launch(result chan<- lResult, attr *Launcher, data interface{}, quit chan<-
 	var pid int
 	if attr.callbackFn != nil {
 		if err = attr.callbackFn(pa, data); err != nil {
+			err = fmt.Errorf("callbackFn: %w", err)
 			goto abort
 		}
 		if attr.path == "" {
@@ -308,20 +310,24 @@ func launch(result chan<- lResult, attr *Launcher, data interface{}, quit chan<-
 	}
 
 	if needChroot, err = validatePA(pa, attr.chroot); err != nil {
+		err = fmt.Errorf("validatePA: %w", err)
 		goto abort
 	}
 	if attr.changeUIDs {
 		if err = singlesc.setUID(attr.uid); err != nil {
+			err = fmt.Errorf("setUID: %w", err)
 			goto abort
 		}
 	}
 	if attr.changeGIDs {
 		if err = singlesc.setGroups(attr.gid, attr.groups); err != nil {
+			err = fmt.Errorf("setGroups: %w", err)
 			goto abort
 		}
 	}
 	if attr.changeMode {
 		if err = singlesc.setMode(attr.mode); err != nil {
+			err = fmt.Errorf("setMode: %w", err)
 			goto abort
 		}
 	}
@@ -329,6 +335,7 @@ func launch(result chan<- lResult, attr *Launcher, data interface{}, quit chan<-
 		// Note, since .iab is a private copy we don't need to
 		// lock it around this call.
 		if err = singlesc.iabSetProc(attr.iab); err != nil {
+			err = fmt.Errorf("iabSetProc: %w", err)
 			goto abort
 		}
 	}
@@ -336,13 +343,18 @@ func launch(result chan<- lResult, attr *Launcher, data interface{}, quit chan<-
 	if needChroot {
 		c := GetProc()
 		if err = c.SetFlag(Effective, true, SYS_CHROOT); err != nil {
+			err = fmt.Errorf("chroot SetFlag: %w", err)
 			goto abort
 		}
 		if err = singlesc.setProc(c); err != nil {
+			err = fmt.Errorf("chroot setProc: %w", err)
 			goto abort
 		}
 	}
 	pid, err = syscall.ForkExec(attr.path, attr.args, pa)
+	if err != nil {
+		err = fmt.Errorf("forkExec: %w", err)
+	}
 
 abort:
 	if err != nil {

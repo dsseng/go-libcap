@@ -222,7 +222,7 @@ func (sc *syscaller) setUID(uid int) error {
 	}()
 
 	if err := w.SetFlag(Effective, true, SETUID); err != nil {
-		return err
+		return fmt.Errorf("setFlag: %w", err)
 	}
 
 	// these may or may not work depending on whether or not they
@@ -231,11 +231,11 @@ func (sc *syscaller) setUID(uid int) error {
 	defer sc.prctlwcall(prSetKeepCaps, 0, 0)
 
 	if err := sc.setProc(w); err != nil {
-		return err
+		return fmt.Errorf("setProc: %w", err)
 	}
 
 	if _, _, err := sc.w3(syscall.SYS_SETUID, uintptr(uid), 0, 0); err != 0 {
-		return err
+		return fmt.Errorf("setuid: %w", err)
 	}
 	return nil
 }
